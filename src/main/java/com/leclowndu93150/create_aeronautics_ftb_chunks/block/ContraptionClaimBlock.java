@@ -19,6 +19,7 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,6 +30,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -212,39 +214,66 @@ public class ContraptionClaimBlock extends BaseEntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        UUID ownerUUID = null;
+        UUID subLevelUUID = null;
+        LevelPlot plot = null;
+
         if (!level.isClientSide && !state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof ContraptionClaimBlockEntity entity) {
                 SubLevelContainer container = SubLevelContainer.getContainer((ServerLevel) level);
                 if (container != null && container.inBounds(pos)) {
-                    LevelPlot plot = container.getPlot(new ChunkPos(pos));
+                    plot = container.getPlot(new ChunkPos(pos));
                     if (plot != null) {
-                        UUID ownerUUID = entity.getOwnerUUID();
-                        if (ownerUUID != null) {
-                            Optional<Team> teamOpt = FTBTeamsAPI.api().getManager().getTeamForPlayerID(ownerUUID);
-                            if (teamOpt.isPresent()) {
-                                ClaimedChunkManager manager = FTBChunksAPI.api().getManager();
-                                ChunkTeamData teamData = manager.getOrCreateData(teamOpt.get());
-                                var source = level.getServer().createCommandSourceStack().withSuppressedOutput();
-                                for (var holder : plot.getLoadedChunks()) {
-                                    ChunkDimPos dimPos = new ChunkDimPos(level.dimension(), holder.getPos());
-                                    ClaimedChunk existing = manager.getChunk(dimPos);
-                                    if (existing != null && existing.getTeamData().getTeam().getId().equals(teamOpt.get().getId())) {
-                                        teamData.unForceLoad(source, dimPos, false);
-                                        teamData.unclaim(source, dimPos, false);
-                                    }
-                                }
-                            }
-                        }
-                        UUID subLevelUUID = entity.getSubLevelUUID();
-                        if (subLevelUUID != null) {
-                            ContraptionForceLoadManager.disablePhysicsForceLoad(level.getServer(), subLevelUUID);
-                            ContraptionForceLoadManager.disablePlotForceLoad(level.getServer(), subLevelUUID);
-                        }
+                        ownerUUID = entity.getOwnerUUID();
+                        subLevelUUID = entity.getSubLevelUUID();
                     }
                 }
             }
         }
+
         super.onRemove(state, level, pos, newState, movedByPiston);
+
+        if (!level.isClientSide && !state.is(newState.getBlock())) {
+            ServerLevel serverLevel = (ServerLevel) level;
+            cleanupClaims(serverLevel, plot, ownerUUID, subLevelUUID);
+            syncRemovedBlock(serverLevel, pos, state, newState);
+        }
+    }
+
+    private void cleanupClaims(ServerLevel level, @Nullable LevelPlot plot, @Nullable UUID ownerUUID, @Nullable UUID subLevelUUID) {
+        if (plot != null && ownerUUID != null) {
+            Optional<Team> teamOpt = FTBTeamsAPI.api().getManager().getTeamForPlayerID(ownerUUID);
+            if (teamOpt.isPresent()) {
+                ClaimedChunkManager manager = FTBChunksAPI.api().getManager();
+                ChunkTeamData teamData = manager.getOrCreateData(teamOpt.get());
+                var source = level.getServer().createCommandSourceStack().withSuppressedOutput();
+                for (var holder : plot.getLoadedChunks()) {
+                    ChunkDimPos dimPos = new ChunkDimPos(level.dimension(), holder.getPos());
+                    ClaimedChunk existing = manager.getChunk(dimPos);
+                    if (existing != null && existing.getTeamData().getTeam().getId().equals(teamOpt.get().getId())) {
+                        teamData.unForceLoad(source, dimPos, false);
+                        teamData.unclaim(source, dimPos, false);
+                    }
+                }
+            }
+        }
+
+        if (subLevelUUID != null) {
+            ContraptionForceLoadManager.disablePhysicsForceLoad(level.getServer(), subLevelUUID);
+            ContraptionForceLoadManager.disablePlotForceLoad(level.getServer(), subLevelUUID);
+        }
+    }
+
+    private void syncRemovedBlock(ServerLevel level, BlockPos pos, BlockState oldState, BlockState newState) {
+        level.sendBlockUpdated(pos, oldState, newState, Block.UPDATE_ALL_IMMEDIATE);
+
+        SubLevelContainer container = SubLevelContainer.getContainer(level);
+        if (container == null || !container.inBounds(pos)) return;
+
+        ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, newState);
+        for (ServerPlayer player : container.getPlayersTracking(new ChunkPos(pos))) {
+            player.connection.send(packet);
+        }
     }
 }
