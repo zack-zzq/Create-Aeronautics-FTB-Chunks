@@ -9,7 +9,10 @@ import com.leclowndu93150.create_aeronautics_ftb_chunks.network.ContraptionClaim
 import com.leclowndu93150.create_aeronautics_ftb_chunks.network.OpenContraptionScreenPacket;
 import com.leclowndu93150.create_aeronautics_ftb_chunks.network.ServerHandler;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -39,7 +42,8 @@ public class CreateAeronauticsFTBChunks {
 
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
-    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK_ENTITY_TYPE, MODID);
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
+    public static final DeferredRegister<CreativeModeTab> CREATIVE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
 
     public static final DeferredBlock<Block> CONTRAPTION_CLAIM_BLOCK = BLOCKS.register(
             "contraption_claim_block",
@@ -56,6 +60,14 @@ public class CreateAeronauticsFTBChunks {
             new Item.Properties()
     );
 
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> CREATIVE_TAB = CREATIVE_TABS.register("main",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.create_aeronautics_ftb_chunks.main"))
+                    .icon(() -> CONTRAPTION_CLAIM_BLOCK_ITEM.get().getDefaultInstance())
+                    .displayItems((params, output) -> output.accept(CONTRAPTION_CLAIM_BLOCK_ITEM.get()))
+                    .build()
+    );
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ContraptionClaimBlockEntity>> CONTRAPTION_CLAIM_BLOCK_ENTITY =
             BLOCK_ENTITIES.register("contraption_claim_block_entity",
                     () -> BlockEntityType.Builder.of(ContraptionClaimBlockEntity::new, CONTRAPTION_CLAIM_BLOCK.get()).build(null)
@@ -65,6 +77,7 @@ public class CreateAeronauticsFTBChunks {
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         BLOCK_ENTITIES.register(modEventBus);
+        CREATIVE_TABS.register(modEventBus);
         modEventBus.addListener(this::registerPayloads);
         modContainer.registerConfig(ModConfig.Type.SERVER, com.leclowndu93150.create_aeronautics_ftb_chunks.ModConfig.SPEC);
         NeoForge.EVENT_BUS.register(this);

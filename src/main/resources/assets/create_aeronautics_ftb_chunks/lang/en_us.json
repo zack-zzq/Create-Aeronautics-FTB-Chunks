@@ -1,4 +1,5 @@
 {
+  "itemGroup.create_aeronautics_ftb_chunks.main": "Create Aeronautics: FTB Chunks",
   "block.create_aeronautics_ftb_chunks.contraption_claim_block": "Contraption Claim Block",
   "create_aeronautics_ftb_chunks.not_owner": "Only the owner or a team officer can manage this claim block.",
   "create_aeronautics_ftb_chunks.duplicate_claim": "This contraption already has a claim block.",
