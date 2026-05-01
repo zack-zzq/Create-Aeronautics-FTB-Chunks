@@ -190,6 +190,7 @@ public class ContraptionClaimBlock extends BaseEntityBlock {
                 subLevelUUID, shipName, chunkLongs.size(), claimed, forceLoaded,
                 ContraptionForceLoadManager.isPlotForceLoaded(subLevelUUID),
                 ContraptionForceLoadManager.isPhysicsForceLoaded(subLevelUUID),
+                ModConfig.ALLOW_PLOT_CHUNK_FORCE_LOAD.get(),
                 canPlotForceLoad,
                 ModConfig.ALLOW_PHYSICS_FORCE_LOAD.get() && canPlotForceLoad,
                 usedClaims, maxClaims, usedForceLoads, maxForceLoads,

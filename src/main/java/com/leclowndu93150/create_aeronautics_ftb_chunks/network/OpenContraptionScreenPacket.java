@@ -17,6 +17,7 @@ public record OpenContraptionScreenPacket(
         boolean forceLoaded,
         boolean plotForceLoaded,
         boolean physicsForceLoaded,
+        boolean canForceLoad,
         boolean canPlotForceLoad,
         boolean canPhysicsForceLoad,
         int usedClaims,
@@ -45,6 +46,7 @@ public record OpenContraptionScreenPacket(
                 buf.writeBoolean(p.forceLoaded());
                 buf.writeBoolean(p.plotForceLoaded());
                 buf.writeBoolean(p.physicsForceLoaded());
+                buf.writeBoolean(p.canForceLoad());
                 buf.writeBoolean(p.canPlotForceLoad());
                 buf.writeBoolean(p.canPhysicsForceLoad());
                 buf.writeInt(p.usedClaims());
@@ -69,6 +71,7 @@ public record OpenContraptionScreenPacket(
                     buf.readBoolean(),
                     buf.readBoolean(),
                     buf.readBoolean(),
+                    buf.readBoolean(),
                     buf.readInt(),
                     buf.readInt(),
                     buf.readInt(),
@@ -82,6 +85,30 @@ public record OpenContraptionScreenPacket(
                     buf.readList(b -> b.readLong())
             )
     );
+
+    public OpenContraptionScreenPacket withClaimed(boolean claimed) {
+        return new OpenContraptionScreenPacket(subLevelUUID, shipName, chunkCount, claimed, forceLoaded, plotForceLoaded, physicsForceLoaded, canForceLoad, canPlotForceLoad, canPhysicsForceLoad, usedClaims, maxClaims, usedForceLoads, maxForceLoads, isPartyTeam, accessMode, ownerUUID, ownerName, memberNames, allyNames, chunkLongs);
+    }
+
+    public OpenContraptionScreenPacket withForceLoaded(boolean forceLoaded, int usedForceLoadsDelta) {
+        return new OpenContraptionScreenPacket(subLevelUUID, shipName, chunkCount, claimed, forceLoaded, plotForceLoaded, physicsForceLoaded, canForceLoad, canPlotForceLoad, canPhysicsForceLoad, usedClaims, maxClaims, Math.max(0, usedForceLoads + usedForceLoadsDelta), maxForceLoads, isPartyTeam, accessMode, ownerUUID, ownerName, memberNames, allyNames, chunkLongs);
+    }
+
+    public OpenContraptionScreenPacket withPlotForceLoaded(boolean plotForceLoaded) {
+        return new OpenContraptionScreenPacket(subLevelUUID, shipName, chunkCount, claimed, forceLoaded, plotForceLoaded, physicsForceLoaded, canForceLoad, canPlotForceLoad, canPhysicsForceLoad, usedClaims, maxClaims, usedForceLoads, maxForceLoads, isPartyTeam, accessMode, ownerUUID, ownerName, memberNames, allyNames, chunkLongs);
+    }
+
+    public OpenContraptionScreenPacket withPhysicsForceLoaded(boolean physicsForceLoaded) {
+        return new OpenContraptionScreenPacket(subLevelUUID, shipName, chunkCount, claimed, forceLoaded, plotForceLoaded, physicsForceLoaded, canForceLoad, canPlotForceLoad, canPhysicsForceLoad, usedClaims, maxClaims, usedForceLoads, maxForceLoads, isPartyTeam, accessMode, ownerUUID, ownerName, memberNames, allyNames, chunkLongs);
+    }
+
+    public OpenContraptionScreenPacket withAccessMode(String accessMode) {
+        return new OpenContraptionScreenPacket(subLevelUUID, shipName, chunkCount, claimed, forceLoaded, plotForceLoaded, physicsForceLoaded, canForceLoad, canPlotForceLoad, canPhysicsForceLoad, usedClaims, maxClaims, usedForceLoads, maxForceLoads, isPartyTeam, accessMode, ownerUUID, ownerName, memberNames, allyNames, chunkLongs);
+    }
+
+    public OpenContraptionScreenPacket withAllyNames(List<String> allyNames) {
+        return new OpenContraptionScreenPacket(subLevelUUID, shipName, chunkCount, claimed, forceLoaded, plotForceLoaded, physicsForceLoaded, canForceLoad, canPlotForceLoad, canPhysicsForceLoad, usedClaims, maxClaims, usedForceLoads, maxForceLoads, isPartyTeam, accessMode, ownerUUID, ownerName, memberNames, allyNames, chunkLongs);
+    }
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

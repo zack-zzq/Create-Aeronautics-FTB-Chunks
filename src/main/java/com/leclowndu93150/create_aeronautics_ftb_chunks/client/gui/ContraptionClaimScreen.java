@@ -26,7 +26,6 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 public class ContraptionClaimScreen extends AbstractThreePanelScreen<ContraptionClaimScreen.ContentPanel> {
 
@@ -77,29 +76,16 @@ public class ContraptionClaimScreen extends AbstractThreePanelScreen<Contraption
         playClickSound();
         PacketDistributor.sendToServer(new ContraptionClaimActionPacket(action));
 
-        // Helper to rebuild data with most fields unchanged
-        record D(UUID sl, String sn, int cc, boolean cl, boolean fl, boolean pfl, boolean phfl,
-                 boolean cpfl, boolean cphfl, int uc, int mc, int ufl, int mfl, boolean ipt,
-                 String am, UUID ou, String on2, List<String> mn, List<String> an, List<Long> chl) {
-            OpenContraptionScreenPacket pack() {
-                return new OpenContraptionScreenPacket(sl, sn, cc, cl, fl, pfl, phfl, cpfl, cphfl, uc, mc, ufl, mfl, ipt, am, ou, on2, mn, an, chl);
-            }
-        }
-        var d = new D(data.subLevelUUID(), data.shipName(), data.chunkCount(), data.claimed(), data.forceLoaded(),
-                data.plotForceLoaded(), data.physicsForceLoaded(), data.canPlotForceLoad(), data.canPhysicsForceLoad(),
-                data.usedClaims(), data.maxClaims(), data.usedForceLoads(), data.maxForceLoads(), data.isPartyTeam(),
-                data.accessMode(), data.ownerUUID(), data.ownerName(), data.memberNames(), data.allyNames(), data.chunkLongs());
-
         data = switch (action) {
-            case CLAIM              -> new D(d.sl(), d.sn(), d.cc(), true,  d.fl(), d.pfl(), d.phfl(), d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), d.am(), d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case UNCLAIM            -> new D(d.sl(), d.sn(), d.cc(), false, false, false, false, false, false,   d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), d.am(), d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case FORCE_LOAD         -> new D(d.sl(), d.sn(), d.cc(), d.cl(), true,  d.pfl(), d.phfl(), d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl() + d.cc(), d.mfl(), d.ipt(), d.am(), d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case UNFORCE_LOAD       -> new D(d.sl(), d.sn(), d.cc(), d.cl(), false, false,   false,   d.cpfl(), d.cphfl(), d.uc(), d.mc(), Math.max(0, d.ufl() - d.cc()), d.mfl(), d.ipt(), d.am(), d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case PHYSICS_FORCE_LOAD   -> new D(d.sl(), d.sn(), d.cc(), d.cl(), d.fl(), d.pfl(), true,  d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), d.am(), d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case PHYSICS_UNFORCE_LOAD -> new D(d.sl(), d.sn(), d.cc(), d.cl(), d.fl(), d.pfl(), false, d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), d.am(), d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case ACCESS_PRIVATE     -> new D(d.sl(), d.sn(), d.cc(), d.cl(), d.fl(), d.pfl(), d.phfl(), d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), "private", d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case ACCESS_ALLIES      -> new D(d.sl(), d.sn(), d.cc(), d.cl(), d.fl(), d.pfl(), d.phfl(), d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), "allies",  d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
-            case ACCESS_PUBLIC      -> new D(d.sl(), d.sn(), d.cc(), d.cl(), d.fl(), d.pfl(), d.phfl(), d.cpfl(), d.cphfl(), d.uc(), d.mc(), d.ufl(), d.mfl(), d.ipt(), "public",  d.ou(), d.on2(), d.mn(), d.an(), d.chl()).pack();
+            case CLAIM                -> data.withClaimed(true);
+            case UNCLAIM              -> data.withClaimed(false).withForceLoaded(false, 0).withPlotForceLoaded(false).withPhysicsForceLoaded(false);
+            case FORCE_LOAD           -> data.withForceLoaded(true, data.chunkCount());
+            case UNFORCE_LOAD         -> data.withForceLoaded(false, -data.chunkCount()).withPlotForceLoaded(false).withPhysicsForceLoaded(false);
+            case PHYSICS_FORCE_LOAD   -> data.withPhysicsForceLoaded(true);
+            case PHYSICS_UNFORCE_LOAD -> data.withPhysicsForceLoaded(false);
+            case ACCESS_PRIVATE       -> data.withAccessMode("private");
+            case ACCESS_ALLIES        -> data.withAccessMode("allies");
+            case ACCESS_PUBLIC        -> data.withAccessMode("public");
         };
 
         pendingData = data;
@@ -192,7 +178,7 @@ public class ContraptionClaimScreen extends AbstractThreePanelScreen<Contraption
 
             add(new VerticalSpaceWidget(this, 2));
 
-            if (data.claimed()) {
+            if (data.claimed() && data.canForceLoad()) {
                 add(SimpleTextButton.create(this,
                         data.forceLoaded()
                                 ? Component.translatable("create_aeronautics_ftb_chunks.screen.unforce")
@@ -332,7 +318,7 @@ public class ContraptionClaimScreen extends AbstractThreePanelScreen<Contraption
                             playClickSound();
                             PacketDistributor.sendToServer(new ContraptionAllyPacket(name, false));
                             if (!localAllies.contains(name)) localAllies.add(name);
-                            data = new OpenContraptionScreenPacket(data.subLevelUUID(), data.shipName(), data.chunkCount(), data.claimed(), data.forceLoaded(), data.plotForceLoaded(), data.physicsForceLoaded(), data.canPlotForceLoad(), data.canPhysicsForceLoad(), data.usedClaims(), data.maxClaims(), data.usedForceLoads(), data.maxForceLoads(), data.isPartyTeam(), data.accessMode(), data.ownerUUID(), data.ownerName(), data.memberNames(), localAllies, data.chunkLongs());
+                            data = data.withAllyNames(new ArrayList<>(localAllies));
                             pendingData = data;
                             textBox.setText("");
                             getGui().refreshWidgets();
@@ -348,7 +334,7 @@ public class ContraptionClaimScreen extends AbstractThreePanelScreen<Contraption
                             playClickSound();
                             PacketDistributor.sendToServer(new ContraptionAllyPacket(ally, true));
                             localAllies.remove(ally);
-                            data = new OpenContraptionScreenPacket(data.subLevelUUID(), data.shipName(), data.chunkCount(), data.claimed(), data.forceLoaded(), data.plotForceLoaded(), data.physicsForceLoaded(), data.canPlotForceLoad(), data.canPhysicsForceLoad(), data.usedClaims(), data.maxClaims(), data.usedForceLoads(), data.maxForceLoads(), data.isPartyTeam(), data.accessMode(), data.ownerUUID(), data.ownerName(), data.memberNames(), localAllies, data.chunkLongs());
+                            data = data.withAllyNames(new ArrayList<>(localAllies));
                             pendingData = data;
                             getGui().refreshWidgets();
                         }));
